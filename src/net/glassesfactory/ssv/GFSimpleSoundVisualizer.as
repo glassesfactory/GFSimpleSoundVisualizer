@@ -254,10 +254,9 @@ package net.glassesfactory.ssv
 			{
 				xx = i * _column;
 				row = _data[i];
-				outerloop: for( var j:int = 0; j < _thickness; ++j )
+				columnloop: for( var j:int = 0; j < _thickness; ++j )
 				{
-					
-					if( row < 1 ){ continue outerloop; }
+					if( row < 1 ){ continue columnloop; }
 					
 					for( yy = 0; yy < row; ++yy )
 					{

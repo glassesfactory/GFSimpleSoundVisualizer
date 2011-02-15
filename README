@@ -1,0 +1,35 @@
+ /*////////////////////////////////////////////////////////////////
+	GFSimpleSoundVisualizer
+	README
+	Date : 2011/02/14
+	Autor : YAMAGUCHI EIKICHI (twitter : @glasses_factory)
+	URL : http://glasses-factory.net
+	License : MIT
+/*////////////////////////////////////////////////////////////////
+
+お世話になったあなたにバレンタインの贈り物だよ！
+
+冗談です。
+
+GFSimpleSoundVisualizer は
+BGM 有りの Full Flash サイトなどでよく見かける EQ の棒が上下している
+よくあるサウンドヴィジュアライザーです。
+
+_ssv = new GFSimpleSoundVisualizer( 8, 1, 0xffffff, _sound );
+_sound.load( new URLRequest("test.mp3"));
+_ssv.play();
+
+こんな感じで手軽に使えます。
+
+どうせミニマムな表示なんだから BitmapData でやれば軽くなるんじゃね
+と割と安易な発想で作ってます。
+多分…軽い…はず…
+
+案件の中でよく使っていたソースを素に、がーっとライブラリっぽくしたのでバグとかあると思いますが
+見つけたら報告していただけると嬉しいです。
+
+以下にサンプル的なものをUPしましたので
+動作感などの参考にしていただければ。
+
+/* http://blog.glasses-factory.net/サンプル記事書いたらURL貼りますよ */
+
