@@ -35,6 +35,7 @@ package net.glassesfactory.ssv
 		
 		/**
 		 * EQのバンド数。 
+		 * @default 8
 		 * @return 
 		 * 
 		 */		
@@ -50,6 +51,7 @@ package net.glassesfactory.ssv
 		
 		/**
 		 * EQゲージの太さ 
+		 * @default 1;
 		 * @return 
 		 */		
 		public function get thickness():uint{ return _thickness; }
@@ -63,6 +65,7 @@ package net.glassesfactory.ssv
 		
 		/**
 		 * EQゲージの色
+		 * @default 0xffffff
 		 * @return 
 		 * 
 		 */		
@@ -89,7 +92,8 @@ package net.glassesfactory.ssv
 		
 		
 		/**
-		 * 透過するかどうか 
+		 * 透過するかどうか
+		 * @default false;
 		 * @return 
 		 * 
 		 */		
@@ -103,7 +107,8 @@ package net.glassesfactory.ssv
 		
 		
 		/**
-		 * EQゲージの間隔 
+		 * EQゲージの間隔
+		 * @default 1; 
 		 * @return 
 		 * 
 		 */		
@@ -117,6 +122,17 @@ package net.glassesfactory.ssv
 		
 		
 		/**
+		 * ボリュームが小さく、あまり派手にならない場合はこの値を大きく、
+		 * 大きすぎる場合は 0.n ~ で調整。
+		 * 音量の調整ではないです。
+		 * @return 
+		 */		
+		public function get visualGain():Number{ return _visualGain; }
+		public function set visualGain( value:Number ):void{ _visualGain = value; }
+		private var _visualGain:Number = 1;
+		
+		
+		/**
 		 * 対象となるサウンド 
 		 * @return 
 		 * 
@@ -127,6 +143,7 @@ package net.glassesfactory.ssv
 			_source = value;
 		}
 		private var _source:Sound;
+		
 		
 		
 		//--private---
@@ -168,21 +185,22 @@ package net.glassesfactory.ssv
 		 * 見た目だけを初期化します。 
 		 * @param thickness
 		 */		
-		public function visualInit( thickness:uint = 1, color:uint = 0xffffff, transpearent:Boolean = false ):void
+		public function visualInit( thickness:uint = 1, color:uint = 0xffffff, transpearent:Boolean = false, backgroundColor:uint = 0 ):void
 		{
 			_thickness = thickness;
 			_color = color;
 			_transpearent = transpearent;
+			_backgroundColor = backgroundColor;
 			_initializeView();
 		}
 		
 		/**
 		 * 再生を開始します。 
 		 */		
-		public function play():void
+		public function play():SoundChannel
 		{
 			this.addEventListener( Event.ENTER_FRAME, _enterFrameHandler );
-			_source.play();
+			return _source.play();
 		}
 		
 		
@@ -234,7 +252,8 @@ package net.glassesfactory.ssv
 				var d:int = i /  ( 256 / _band ) | 0;
 				if( d < _band )
 				{
-					_data[d] = Math.round( value / _band * 100 * _thickness );
+					_data[d] = Math.round( value / _band * 100 * _visualGain * _thickness );
+					trace(_data[d]);
 				}
 			}
 		}
@@ -257,7 +276,7 @@ package net.glassesfactory.ssv
 				columnloop: for( var j:int = 0; j < _thickness; ++j )
 				{
 					if( row < 1 ){ continue columnloop; }
-					
+					else if( row > _view.height ){ row = _view.height; } 
 					for( yy = 0; yy < row; ++yy )
 					{
 						_view.setPixel32( xx, _view.height - yy, _color );
