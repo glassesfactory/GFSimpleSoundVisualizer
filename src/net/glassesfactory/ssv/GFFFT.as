@@ -17,18 +17,18 @@ http://www.kurims.kyoto-u.ac.jp/~ooura/fftman/
 
 /*////////////////////////////////////////////
 
+/**
+ * FFT module; 
+ */
+
 package net.glassesfactory.ssv
 {
 	public class GFFFT
 	{
-		/*/////////////////////////////////
-		* public methods
-		/*/////////////////////////////////
-		
+		//テーブル系
 		private var _waveTable:Vector.<Number> = new Vector.<Number>();
 		private var _btTmp:Vector.<Number> = new Vector.<Number>(256);
 		private var _len:Number = 0;
-		
 		
 		//Constractor
 		public function GFFFT()
