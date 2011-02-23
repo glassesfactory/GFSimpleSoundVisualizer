@@ -1,19 +1,20 @@
 /*////////////////////////////////////////////
 
-GFSimpleSoundVisualizer
+GFSimpleSoundVisualyzer
 
 Autor	YAMAGUCHI EIKICHI
 (@glasses_factory)
-Date	2011/02/14
+Date	2011/02/09
 
-Copyright 2011 glasses factory
+Copyright 2010 glasses factory
 http://glasses-factory.net
 
 /*////////////////////////////////////////////
 
 
 /**
- * とりあえず SoundMixer.computeSpectrumを使用した版　 
+ * sound.extract() で byteArray を取得したあと
+ * 自力でゴニョゴニョ 
  */
 
 package net.glassesfactory.ssv
@@ -23,12 +24,16 @@ package net.glassesfactory.ssv
 	import flash.events.Event;
 	import flash.media.Sound;
 	import flash.media.SoundChannel;
-	import flash.media.SoundMixer;
-	import flash.media.SoundTransform;
 	import flash.utils.ByteArray;
+	
 
-	public class GFSimpleSoundVisualizer extends Bitmap
+	public class GFSoundVisualizer extends Bitmap
 	{
+		/*/////////////////////////////////
+		* public variables
+		/*/////////////////////////////////
+		
+		
 		/*/////////////////////////////////
 		* getter / setter
 		/*/////////////////////////////////
@@ -147,70 +152,67 @@ package net.glassesfactory.ssv
 		
 		
 		//--private---
-		private var _buffer:Vector.<Vector.<Number>>;
+		//test
 		private var _data:Vector.<int>;
+		private var _tmpWave:Vector.<Number> = new Vector.<Number>( 2048, true );
+		
+		//test
+		private var _imag:Vector.<Number>;
 		private var _bytes:ByteArray;
 		private var _view:BitmapData;
 		private var _column:int;
+		private var _sc:SoundChannel;
+		private var _samplingRate:Number = 0;
+		private var _soundPos:int = 0;
 		
+		private const PI:Number = Math.PI; 
+		private var _fft:GFFFT;
 		
 		/*/////////////////////////////////
 		* public methods
 		/*/////////////////////////////////
 		
-		/**
-		 * コンストラクタ 
-		 * @param divide EQ のバンド数。
-		 * @param thickness EQゲージの太さ
-		 * @param color EQゲージの色
-		 * @param source 対象となるサウンド
-		 * 
-		 */		
-		public function GFSimpleSoundVisualizer( band:uint = 8, thickness:uint = 1, color:uint = 0xffffff, source:Sound = null )
+		//Constractor
+		public function GFSoundVisualizer( thickness:uint = 1, color:uint = 0xffffff, source:Sound = null )
 		{
 			super( _view, "auto", false );
-			_band = band;
 			_thickness = thickness;
 			_source = source;
-			_color = color;
-			
-			_buffer = new Vector.<Vector.<Number>>( 2, true );
 			_bytes = new ByteArray();
-			
+			_fft = new GFFFT();
 			_initializeView();
 		}
 		
 		
 		/**
-		 * 見た目だけを初期化します。 
+		 * 見た目を初期化します。 
 		 * @param thickness
 		 */		
-		public function visualInit( thickness:uint = 1, color:uint = 0xffffff, transpearent:Boolean = false, backgroundColor:uint = 0 ):void
+		public function visualInit( thickness:uint, color:uint, transpearent:Boolean ):void
 		{
 			_thickness = thickness;
 			_color = color;
 			_transpearent = transpearent;
-			_backgroundColor = backgroundColor;
 			_initializeView();
 		}
 		
+		
 		/**
-		 * 再生を開始します。 
+		 * 解析するサウンドを変えます。 
+		 * @param source
+		 * 
 		 */		
-		public function play():SoundChannel
+		public function regiserSound( source:Sound ):void
 		{
-			this.addEventListener( Event.ENTER_FRAME, _enterFrameHandler );
-			return _source.play();
+			_source = source;
 		}
 		
 		
-		/**
-		 * 停止します。 
-		 */		
-		public function stop():void
+		public function play():SoundChannel
 		{
-			this.removeEventListener( Event.ENTER_FRAME, _enterFrameHandler );
-			_source.close();
+			this.addEventListener( Event.ENTER_FRAME, _enterFrameHandler );
+			_sc = _source.play();
+			return _sc;
 		}
 		
 		
@@ -218,45 +220,62 @@ package net.glassesfactory.ssv
 		* private methods
 		/*/////////////////////////////////
 		
-		/**
-		 * 見た目の初期化 
-		 */		
 		private function _initializeView():void
 		{
 			_column = _thickness + _margin;
 			_view = new BitmapData( _column * _band, _column * _band, _transpearent, _backgroundColor );
-			_data = new Vector.<int>();
+			_data = new Vector.<int>( 8 );
 			this.bitmapData = _view;
 		}
 		
 		
+		/**
+		 * 毎フレーム実行される処理。 
+		 * @param e
+		 * 
+		 */		
 		private function _enterFrameHandler( e:Event ):void
 		{
 			update();
 			draw();
 		}
 		
-		
-		/**
-		 * サウンド解析したデータをアップデート 
-		 */		
 		public function update():void
 		{
-			SoundMixer.computeSpectrum( _bytes, true, 0 );
-			
-			var value:Number = 0;
-			trace( _bytes.length );
-			for( var i:int = 0; i < 256; ++i )
+			if( _source.length != 0 )
 			{
-				value = _bytes.readFloat();
-				var d:int = i /  ( 256 / _band ) | 0;
-				if( d < _band )
+				_bytes = new ByteArray();
+				_soundPos = int( _sc.position / 2048 * 44100 );
+				_samplingRate = _source.extract( _bytes, 2048, _soundPos );
+				var l:Number;
+				var r:Number;
+				
+				for( var i:int = 0; i < _samplingRate; ++i )
 				{
-					_data[d] = Math.round( value / _band * 100 * _visualGain * _thickness );
+					_bytes.position = int( i ) * 4;
+					l = _bytes.readFloat();
+					_bytes.position = int( i ) * 4 + 4;
+					r = _bytes.readFloat();
+					//でかいほう取る
+					_tmpWave[i] = ( l < r ) ? r : l;
+				}
+				_fft.cdft( 1, _tmpWave );
+				
+				var  d:int;
+				var value:Number;
+				for( i = 0; i < 256; ++i )
+				{
+					d = i /  ( 256 / _band ) | 0;
+					//test
+					value =  _tmpWave[d * i];
+					value = Math.abs( value * 10 );
+					if( d < _band )
+					{
+						_data[d] = Math.round( value * _visualGain * _thickness );
+					}
 				}
 			}
 		}
-		
 		
 		/**
 		 * 描画 
@@ -265,14 +284,15 @@ package net.glassesfactory.ssv
 		{
 			_view.lock();
 			_view.fillRect( _view.rect, _backgroundColor );
-						
+			
 			var row:int;
 			var xx:int, yy:int;
-			for( var i:int = 0; i < _band; ++i )
+			var i:int, j:int;
+			for( i = 0; i < _band; ++i )
 			{
 				xx = i * _column;
 				row = _data[i];
-				columnloop: for( var j:int = 0; j < _thickness; ++j )
+				columnloop: for( j = 0; j < _thickness; ++j )
 				{
 					if( row < 1 ){ continue columnloop; }
 					else if( row > _view.height ){ row = _view.height; } 
@@ -285,5 +305,31 @@ package net.glassesfactory.ssv
 			}
 			_view.unlock( _view.rect );
 		}
+		
+		/**
+		 * IIRピーキングフィルタを使えばバンド数固定にはなるけど周波数帯を指定して取得できる…はず…
+		 * そのうちロジックに組み込み予定 
+		 */		
+		/*
+		private function _iirPeaking( fc:Number, q:Number, g:Number, a:Vector.<Number>, b:Vector.<Number> ):void
+		{
+			fc = Math.tan( PI * fc) / (2.0 * PI);
+			
+			a[0] = 1.0 + 2.0 * PI * fc / q + 4.0 * PI * PI * fc * fc;
+			a[1] = ( 8.0 * PI * PI * fc * fc - 2.0 ) / a[0];
+			a[2] = ( 1.0 - 2.0 * PI * fc / q + 4.0 * PI * PI * fc * fc ) / a[0];
+			b[0] = ( 1.0 + 2.0 * PI * fc / q * (1.0 + g ) + 4.0 * PI * PI * fc * fc ) / a[0];
+			b[1] = ( 8.0 * PI * PI * fc * fc - 2.0 ) / a[0];
+			b[2] = ( 1.0 - 2.0 * PI * fc / q * ( 1.0 + g ) + 4.0 * PI * PI * fc * fc ) / a[0];
+			
+			a[0] = 1.0;
+		}
+		*/
+		
+		/*/////////////////////////////////
+		* private variables
+		/*/////////////////////////////////
+		
+		
 	}
 }
